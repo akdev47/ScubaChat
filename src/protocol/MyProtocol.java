@@ -633,6 +633,9 @@ public class MyProtocol {
 
     public boolean containsInAddressList(int address) {
 
+        if(address==255) {
+            return true;
+        }
         for(Integer addressInList : addressesList) {
             if(addressInList == address) {
                 return true;

@@ -114,8 +114,13 @@ public class ScubaChatGUI implements MyProtocolListener {
                         myProtocol.startSendingThread(text, destinationAddress);
                         System.out.println("Sending: " + text);
 
-                        infoLabel.setText("Message sent to: " + destinationAddress);
-                        infoLabel.setForeground(new Color(75, 129, 58));
+                        if(destinationAddress!=255) {
+                            infoLabel.setText("Message sent to: " + destinationAddress);
+                            infoLabel.setForeground(new Color(75, 129, 58));
+                        } else {
+                            infoLabel.setText("SENDING BROADCAST." );
+                            infoLabel.setForeground(new Color(126, 66, 25));
+                        }
                     } else {
                         infoLabel.setText("Invalid destination address.");
                         infoLabel.setForeground(Color.RED);
