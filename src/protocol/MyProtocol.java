@@ -36,8 +36,7 @@ public class MyProtocol {
 
     private List<byte[]> receivedAckPackets = new ArrayList<>();
 
-
-    private int seqNum = 0;
+    private int seqNum = -1;
     private volatile boolean channelFree = true;
     private List<MyProtocolListener> listeners = new ArrayList<>();
 
@@ -126,12 +125,8 @@ public class MyProtocol {
 
         }
 
-
         @Override
         public void run() {
-
-
-            //TODO: obviously change this
 
             //only send you aren't the only node in the network.
             if (addressesList.size() >= 2) {
@@ -173,6 +168,7 @@ public class MyProtocol {
 
             }
 
+            //this part of the code is only reachable when all messages are sent and are ACK'ed.
             for (MyProtocolListener listener : listeners) {
                 listener.onAllACKReceived();
             }
@@ -183,8 +179,10 @@ public class MyProtocol {
         }
         public void sendMethod(int destAddress) {
 
+
             if (destAddress != clientAddress) {
                 System.err.println("NEW ADDRESS STARTED.");
+                seqNum++;
 
                 Packets p = new Packets();
                 try {
@@ -196,19 +194,19 @@ public class MyProtocol {
                 while (!ackReceivedForSeqNum(destAddress)) {
 
                     try {
-                        int delay = (int) (Math.random() * 2501) + 3000;
+                        int delay = (int) (Math.random() * 2501) + 2000;
                         System.out.println("Waiting for " + delay + " milliseconds before sending to destination address");
                         Thread.sleep(delay);
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                     }
 
-                    int timeout = 28000 + (int) (Math.random() * 4001);
+                    int timeout = 25500;
                     System.out.println("Timeout of: " + timeout + "milliseconds");
                     long startTime = System.currentTimeMillis();
 
 
-                    byte[] byteArray = p.packetBuilder(clientAddress, destAddress, 8, seqNum, 0, messageToSend.getBytes(), 0);
+                    byte[] byteArray = p.packetBuilder(clientAddress, destAddress, 4, seqNum, 0, messageToSend.getBytes(), 0);
                     ByteBuffer byteBuffer = ByteBuffer.wrap(byteArray);
                     Message msg = new Message(MessageType.DATA, byteBuffer);
 
@@ -224,7 +222,7 @@ public class MyProtocol {
                                     messageSent= true;
                                     System.out.println("Sent packet with seqNum: " + seqNum);
                                     sendingQueue.put(msg);
-                                    Thread.sleep((int) (Math.random() * (401)) + 50);
+                                    Thread.sleep((int) (Math.random() * (201)) + 50);
                                 } else {
                                     System.out.println("Could not send packet with seqNum: " + seqNum);
                                 }
@@ -266,8 +264,6 @@ public class MyProtocol {
                                 forwardedMessages.remove(forwardedMessage);
                             }
                         }
-
-                        channelFree = true;
 
                         if(seqNum>=255) {
                             seqNum = 0;
@@ -337,11 +333,8 @@ public class MyProtocol {
 
                         int sourceAddress = m.getData().get(0) & 0xFF;
                         int destAddress =m.getData().get(1) & 0xFF;
-                        int ttl = m.getData().get(2) & 0xFF;
                         int seqNum = m.getData().get(3) & 0xFF;
-                        int flag = m.getData().get(4) & 0xFF;
                         int ack = m.getData().get(6) & 0xFF;
-
 
                         if(sourceAddress!= clientAddress && destAddress== clientAddress && ack==1) {
                             System.out.println("Ack recieved to my address: " + sourceAddress + " to " + destAddress);
@@ -361,9 +354,14 @@ public class MyProtocol {
                             }
                         }
                         else if(sourceAddress!= clientAddress && destAddress != clientAddress && ack==1) {
-                            //
 
-                            String forwardedMessage = sourceAddress + "-" + destAddress + "-" + seqNum;
+                            int length = m.getData().get(5) & 0xFF;
+                            String messageThatsRecieved = "";
+                            for (int i = 0; i < length ; i++){
+                                char c = (char) m.getData().get(7+i);
+                                messageThatsRecieved += c;
+                            }
+                            String forwardedMessage = messageThatsRecieved+"-"+sourceAddress + "-" + destAddress + "-" + seqNum;
                             if (!forwardedMessages.contains(forwardedMessage)) {
 
                                 try {
@@ -372,17 +370,14 @@ public class MyProtocol {
 
                                     int updatedTTL = (m.getData().get(2) & 0xFF) - 1;
 
-                                    if (updatedTTL >= 0) {
-
+                                    if (updatedTTL >= 0){
 
                                         boolean messageSent = false;
-                                        System.out.println(
-                                                "attempting to forward ack recieved  from: " + sourceAddress + " to " + destAddress + " (i am address: " + clientAddress + ")");
-                                        int randomDelay = (int) (Math.random() * 4001) + 1000;
+                                        System.out.println("attempting to forward ack recieved  from: " + sourceAddress + " to " + destAddress + " (i am address: " + clientAddress + ")");
+                                        int randomDelay = (int) (Math.random() * 2201) + 800;
                                         System.out.println("waiting for " + randomDelay + " seconds " + " before transmission.");
                                         Thread.sleep(randomDelay);
 
-                                        int numberOfAttempts = 0;
                                         while (!messageSent) {
 
                                             if (channelFree) {
@@ -405,20 +400,7 @@ public class MyProtocol {
 
                                                 }
                                             } else {
-                                                Message mType = receivedQueue.take();
-
-                                                if(mType.getType() == MessageType.FREE) {
-                                                    channelFree = true;
-                                                }
-
-                                                System.err.println("channel busy.");
-                                                numberOfAttempts++;
-
-                                                if (numberOfAttempts > 100) {
-                                                    System.err.println("channel busy for too long. freeing channel");
-                                                    channelFree = true;
-                                                }
-                                                Thread.sleep((int) (Math.random() * (1401)) + 400);
+                                            channelFree = checkChannel();
                                             }
                                         }
                                     }
@@ -427,8 +409,6 @@ public class MyProtocol {
                                 }
 
                             }
-
-
 
                         }
                         else if((destAddress) == clientAddress) {
@@ -440,7 +420,7 @@ public class MyProtocol {
                             }
 
                             String recievedMessage = sourceAddress + "-" + destAddress + "-" + messageThatsRecieved;
-                            int randomD = (int) (Math.random() * 4001) + 4000;
+                            int randomD = (int) (Math.random() * 501) + 1900;
                             System.out.println("Message received: Attempting to send Ack to address" + sourceAddress + " after " +randomD + " ms");
                             Thread.sleep(randomD);
 
@@ -455,11 +435,10 @@ public class MyProtocol {
 
 
                             boolean messageSent = false;
-                            int busyCount = 0;
-
                             while (!messageSent) {
 
                                 if(channelFree) {
+                                    //if channel is still free after a random time
                                     Thread.sleep((int) (Math.random() * (401)) + 50);
                                     if(channelFree) {
                                         messageSent= true;
@@ -477,20 +456,7 @@ public class MyProtocol {
                                         System.out.println("Could not send ack to" + messageThatsRecieved + "will try again");
                                     }
                                 } else {
-                                    Message mType = receivedQueue.take();
-
-                                    if(mType.getType() == MessageType.FREE) {
-                                        channelFree = true;
-                                    }
-                                    System.err.println("Channel busy rn");
-                                    busyCount++;
-
-                                    if (busyCount >= 50) {
-                                        System.out.println("Channel has been busy for too long, resetting channel to free.");
-                                        channelFree = true;
-                                        busyCount = 0;
-                                    }
-
+                                  channelFree = checkChannel();
                                 }
                                 Thread.sleep((int) (Math.random() * (401)) + 1000);
                             }
@@ -500,7 +466,13 @@ public class MyProtocol {
                             System.out.println("current packet dest: " + destAddress);
                             System.out.println("my node address " + clientAddress);
 
-                            String forwardedMessage = sourceAddress + "-" + destAddress + "-" + seqNum;
+                            int length = m.getData().get(5) & 0xFF;
+                            String messageThatsRecieved = "";
+                            for (int i = 0; i < length ; i++){
+                                char c = (char) m.getData().get(7+i);
+                                messageThatsRecieved += c;
+                            }
+                            String forwardedMessage = messageThatsRecieved + "-" +sourceAddress + "-" + destAddress + "-" + seqNum;
 
                             if (!forwardedMessages.contains(forwardedMessage)) {
                                 try {
@@ -509,14 +481,13 @@ public class MyProtocol {
 
                                     if (updatedTTL >= 0) {
                                         boolean messageSent = false;
-                                        int numberOfAttempts = 0;
                                         System.out.println("Attempting to forward and subtract TTL received  from: " + sourceAddress + " to " + destAddress + " (i am address: " + clientAddress + ")");
-                                        int randomDelay = (int) (Math.random() * 6001) + 1000;
+                                        int randomDelay = (int) (Math.random() * 1001);
                                         System.out.println("waiting for " + randomDelay + " seconds " + " before transmission.");
 
                                         while (!messageSent) {
                                             if (channelFree) {
-                                                if (channelFree) {
+
                                                     messageSent = true;
                                                     byteArray[2] = (byte) updatedTTL;
                                                     ByteBuffer modifiedByteBuffer = ByteBuffer.wrap(byteArray);
@@ -525,25 +496,9 @@ public class MyProtocol {
                                                     forwardedMessages.add(forwardedMessage);
                                                     System.err.println("Forwarded and subtracted TTL ");
 
-
-
-                                                }
                                             } else {
 
-                                                Message mType = receivedQueue.take();
-
-                                                if(mType.getType() == MessageType.FREE) {
-                                                    channelFree = true;
-                                                }
-
-                                                System.err.println("channel busy.");
-                                                numberOfAttempts++;
-
-                                                if (numberOfAttempts > 50) {
-                                                    System.err.println("channel busy for too long. freeing channel");
-                                                    channelFree = true;
-                                                }
-                                                Thread.sleep((int) (Math.random() * (1401)) + 1000);
+                                                channelFree = checkChannel();
                                             }
                                         }
                                     }
@@ -552,6 +507,7 @@ public class MyProtocol {
                                 }
                             }
                         }
+
 
 
                     }else if (m.getType() == MessageType.DATA_SHORT) {
@@ -629,8 +585,16 @@ public class MyProtocol {
             }
         }
 
+        public boolean checkChannel() {
+            if(receivedQueue.isEmpty()) {
+                return true;
+            }
+            else {
+                Message mType = receivedQueue.peek();
+                return mType.getType() == MessageType.FREE;
+            }
+        }
     }
-
     public boolean containsInAddressList(int address) {
 
         if(address==255) {
@@ -643,9 +607,4 @@ public class MyProtocol {
         }
         return false;
     }
-
-
 }
-
-
-

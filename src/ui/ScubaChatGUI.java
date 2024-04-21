@@ -46,8 +46,8 @@ public class ScubaChatGUI implements MyProtocolListener {
         frame.setLayout(null);
 
         titleLabel = new JLabel("Welcome to ScubaChat");
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
-        titleLabel.setBounds(100, 50, 300, 50);
+        titleLabel.setFont(new Font("Comfortaa", Font.ITALIC, 24));
+        titleLabel.setBounds(120, 50, 300, 50);
         frame.add(titleLabel);
 
         startButton = new JButton("Start");
@@ -76,6 +76,7 @@ public class ScubaChatGUI implements MyProtocolListener {
 
         chatPanel = new JPanel(null);
         chatPanel.setBounds(0, 0, 500, 500);
+        chatPanel.setBackground(new Color(33, 84, 179));
         chatPanel.setVisible(false);
 
         receivedMessages = new JTextArea();
@@ -108,19 +109,27 @@ public class ScubaChatGUI implements MyProtocolListener {
 
                     if (destinationAddress >= 0 && destinationAddress <= 255 && myProtocol.containsInAddressList(destinationAddress)) {
 
-                        sendButton.setEnabled(false);
-                        sendButton.setText(" ");
-                        sendButton.setBackground(new Color(145, 26, 0));
-                        myProtocol.startSendingThread(text, destinationAddress);
-                        System.out.println("Sending: " + text);
-
-                        if(destinationAddress!=255) {
-                            infoLabel.setText("Message sent to: " + destinationAddress);
-                            infoLabel.setForeground(new Color(75, 129, 58));
-                        } else {
-                            infoLabel.setText("SENDING BROADCAST." );
-                            infoLabel.setForeground(new Color(126, 66, 25));
+                        if(text.length()>=26) {
+                            infoLabel.setText("Please enter a shorter message.");
+                            infoLabel.setForeground(Color.RED);
                         }
+                        else {
+                            sendButton.setEnabled(false);
+                            sendButton.setText(" ");
+                            sendButton.setBackground(new Color(145, 26, 0));
+                            myProtocol.startSendingThread(text, destinationAddress);
+                            System.out.println("Sending: " + text);
+
+                            if(destinationAddress!=255) {
+                                infoLabel.setText("Message sent to: " + destinationAddress);
+                                infoLabel.setForeground(new Color(100, 255, 52));
+                            } else {
+                                infoLabel.setText("SENDING BROADCAST." );
+                                infoLabel.setForeground(new Color(255, 138, 56));
+                            }
+                        }
+
+
                     } else {
                         infoLabel.setText("Invalid destination address.");
                         infoLabel.setForeground(Color.RED);
@@ -140,19 +149,21 @@ public class ScubaChatGUI implements MyProtocolListener {
 
         myAddressLabel = new JLabel("My ADDRESS: ");
         myAddressLabel.setBounds(60,340,200,100);
+        myAddressLabel.setForeground(Color.WHITE);
         myAddressLabel.setVisible(false);
         frame.add(myAddressLabel);
 
-        infoLabel = new JLabel("info: ");
-        infoLabel.setForeground(Color.RED);
-        infoLabel.setBounds(60,410,500,100);
+        infoLabel = new JLabel("Please use this message format; message~destination,(255 for brdcst) ");
+        infoLabel.setForeground(new Color(214, 255, 177));
+        infoLabel.setBounds(40,410,500,100);
         infoLabel.setVisible(false);
         frame.add(infoLabel);
 
         othersAddressLabel = new JLabel("ALL ADDRESSES: ");
         othersAddressLabel .setBounds(60,360,300,100);
+        othersAddressLabel.setForeground(Color.WHITE);
         othersAddressLabel.setVisible(false);
-        frame.add( othersAddressLabel );
+        frame.add(othersAddressLabel);
 
         frame.add(chatPanel);
         frame.setVisible(true);
@@ -220,7 +231,7 @@ public class ScubaChatGUI implements MyProtocolListener {
 
             receivedMessages.setCaretPosition(0);
             infoLabel.setText("Message Successfully Recieved: " + message);
-            infoLabel.setForeground(new Color(0, 91, 230));
+            infoLabel.setForeground(new Color(221, 255, 44));
         });
     }
 
@@ -232,7 +243,7 @@ public class ScubaChatGUI implements MyProtocolListener {
             sendButton.setText("SEND");
             sendButton.setBackground(Color.WHITE);
 
-            infoLabel.setForeground(new Color(75, 129, 58));
+            infoLabel.setForeground(new Color(255, 103, 103));
             infoLabel.setText("CLEAR TO SEND: ");
 
         });
