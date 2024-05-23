@@ -85,7 +85,7 @@ public class MyProtocol {
 
         getAddressesList().add(clientAddress);
 
-        AddressingThread addressingThread = new AddressingThread(addressesList, listeners,sendingQueue);
+        AddressingThread addressingThread = new AddressingThread(addressesList, listeners, sendingQueue);
 
         // Start the receive thread
         new receiveThread(receivedQueue, addressingThread).start();
@@ -371,7 +371,6 @@ public class MyProtocol {
                                     int updatedTTL = (m.getData().get(2) & 0xFF) - 1;
 
                                     if (updatedTTL >= 0){
-
                                         boolean messageSent = false;
                                         System.out.println("attempting to forward ack recieved  from: " + sourceAddress + " to " + destAddress + " (i am address: " + clientAddress + ")");
                                         int randomDelay = (int) (Math.random() * 2201) + 800;
